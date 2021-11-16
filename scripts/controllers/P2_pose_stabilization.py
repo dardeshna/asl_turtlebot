@@ -1,6 +1,10 @@
 import numpy as np
 from utils import wrapToPi
 
+from std_msgs.msg       import Float64
+
+import rospy
+
 # command zero velocities once we are this close to the goal
 RHO_THRES = 0.05
 ALPHA_THRES = 0.1
@@ -15,6 +19,10 @@ class PoseController:
 
         self.V_max = V_max
         self.om_max = om_max
+
+        self.alpha = rospy.Publisher('/controller/alpha', Float64, queue_size = 10)
+        self.delta = rospy.Publisher('/controller/delta', Float64, queue_size=10)
+        self.rho = rospy.Publisher('/controller/rho', Float64, queue_size=10)
 
     def load_goal(self, x_g, y_g, th_g):
         """ Loads in a new goal position """
@@ -38,6 +46,10 @@ class PoseController:
         rho = np.sqrt((x-self.x_g)**2+(y-self.y_g)**2)
         delta = wrapToPi(np.arctan2(self.y_g-y, self.x_g-x)-self.th_g)
         alpha = wrapToPi(delta-(th-self.th_g))
+
+        self.alpha.publish(alpha)
+        self.rho.publish(rho)
+        self.delta.publish(delta)
 
         V = self.k1*rho*np.cos(alpha)
         om = self.k2*alpha + self.k1*np.sinc(alpha/np.pi)*np.cos(alpha)*(alpha+self.k3*delta)
